@@ -199,6 +199,10 @@ void stateChanged(bool plugged, const char* message) {
 void receivedData(uint8_t* data, uint8_t bits, const char* message) {
   Serial.println("===");
   Serial.print("bits="); Serial.println(bits);
+  if ((bits % 8) != 0) {
+    Serial.println("shitty long card, ignoring");
+    return;
+  }
   //Serial.print(message);
   //Serial.print(bits);
   //Serial.print("bits / ");
@@ -206,7 +210,7 @@ void receivedData(uint8_t* data, uint8_t bits, const char* message) {
   uint8_t bytes = 4;
   //Serial.print("bytes = "); Serial.println(bytes);
 
-//=============
+  //=============
   char rfidstring[30] = "";
   //char * rfidstring = (char *) malloc(strlen(data)*2);
   //char rfidstring[strlen((char*) data)*2];
@@ -220,24 +224,33 @@ void receivedData(uint8_t* data, uint8_t bits, const char* message) {
     Serial.print(i); Serial.print(":"); Serial.println(rfidstring);
   }
 
-  //rfidstring[(bytes*2)+1] = '\0';
-  for (int i = 0; i < strlen(rfidstring); i++) {
-    rfidstring[i] = toupper(rfidstring[i]);
-  }
+  Serial.print("strlen: "); Serial.println(strlen(rfidstring));
   
-  //Serial.print("readablerfid4=");Serial.println(rfidstring);
+  for (int i = 0; i < strlen(rfidstring); i++) {
+    Serial.print(i); Serial.print(">");
+
+    Serial.print("-"); Serial.print(rfidstring[i]); Serial.print("-");
+
+    rfidstring[i] = toupper(rfidstring[i]);
+    Serial.print(i); Serial.println("<");
+  }
+
+  Serial.printf("A=%s\n", rfidstring);
   String foundcard = rfidstring;
+  Serial.printf("B=%s\n", rfidstring);
 
   delay(500);
 
-//===============
+  //===============
 
 
   //String foundcard = readablerfid4((char*) data);
   Serial.print("Card Detected: "); Serial.println(foundcard);
 
+
   syslog.logf(LOG_INFO, "Card-Detected: Card=%s", foundcard.c_str());
 
+  
   if (findUser(foundcard)) {
     Serial.print(foundcard); Serial.println(": Card found, unlocking door");
     unlockDoor(foundcard);
@@ -248,7 +261,7 @@ void receivedData(uint8_t* data, uint8_t bits, const char* message) {
     spiffslog(foundcard, String("Unknown card, locking door"));
   }
 
-  delete(&foundcard);
+  //delete (*foundcard);
 }
 
 // Notifies when an invalid transmission is detected
