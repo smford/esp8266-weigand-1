@@ -198,13 +198,42 @@ void stateChanged(bool plugged, const char* message) {
 // Instead of a message, the seconds parameter can be anything you want -- Whatever you specify on `wiegand.onReceive()`
 void receivedData(uint8_t* data, uint8_t bits, const char* message) {
   Serial.println("===");
+  Serial.print("bits="); Serial.println(bits);
   //Serial.print(message);
   //Serial.print(bits);
   //Serial.print("bits / ");
   //uint8_t bytes = (bits + 7) / 8;
+  uint8_t bytes = 4;
   //Serial.print("bytes = "); Serial.println(bytes);
 
-  String foundcard = readablerfid4((char*) data);
+//=============
+  char rfidstring[30] = "";
+  //char * rfidstring = (char *) malloc(strlen(data)*2);
+  //char rfidstring[strlen((char*) data)*2];
+  char tempchar[2];
+  Serial.print("length="); Serial.println(bytes);
+  for (int i = 0; i < bytes; i++) {
+    //Serial.print(data[i] >> 4, 16);
+    //Serial.print(data[i] & 0xF, 16);
+    sprintf(tempchar, "%x%x", data[i] >> 4, data[i] & 0x0F);
+    strcat(rfidstring, tempchar);
+    Serial.print(i); Serial.print(":"); Serial.println(rfidstring);
+  }
+
+  //rfidstring[(bytes*2)+1] = '\0';
+  for (int i = 0; i < strlen(rfidstring); i++) {
+    rfidstring[i] = toupper(rfidstring[i]);
+  }
+  
+  //Serial.print("readablerfid4=");Serial.println(rfidstring);
+  String foundcard = rfidstring;
+
+  delay(500);
+
+//===============
+
+
+  //String foundcard = readablerfid4((char*) data);
   Serial.print("Card Detected: "); Serial.println(foundcard);
 
   syslog.logf(LOG_INFO, "Card-Detected: Card=%s", foundcard.c_str());
@@ -219,7 +248,7 @@ void receivedData(uint8_t* data, uint8_t bits, const char* message) {
     spiffslog(foundcard, String("Unknown card, locking door"));
   }
 
-  //delete(&foundcard);
+  delete(&foundcard);
 }
 
 // Notifies when an invalid transmission is detected
