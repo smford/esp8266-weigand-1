@@ -13,6 +13,7 @@
 // Ensure your board supports external Interruptions on these pins
 #define PIN_D0 D2
 #define PIN_D1 D1
+#define RELAY D6
 
 #define FIRMWARE_VERSION "v1"
 
@@ -24,6 +25,9 @@ const char* appname = "frontdoor";
 const char* ssid = "junk";
 const char* password = "junk";
 const int wifitimeout = 10;
+
+// how long to keep the relay open in seconds
+const int relaytime = 3;
 
 // A UDP instance to let us send and receive packets over UDP
 WiFiUDP udpClient;
@@ -81,17 +85,22 @@ Wiegand wiegand;
 void setup() {
   Serial.begin(115200);
 
-  delay(1000);
+  delay(3000);
+
+  Serial.println("Booting: ...");
 
   Serial.print("Firmware: "); Serial.println(FIRMWARE_VERSION);
 
-  Serial.println("Booting: ...");
+  Serial.println("Configuring Relay: ...");
+  pinMode(RELAY, OUTPUT);
+  Serial.println("Ensure Relay Disabled: ...");
+  disableRelay();
 
   // Connect to Wi-Fi
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
-  Serial.print("Connecting to wifi: ");
+  Serial.print("Connecting to Wifi: ");
   int wifiiteration = 0;
   bool wificonnected = false;
   while (WiFi.status() != WL_CONNECTED) {
@@ -198,17 +207,59 @@ void stateChanged(bool plugged, const char* message) {
 // Instead of a message, the seconds parameter can be anything you want -- Whatever you specify on `wiegand.onReceive()`
 void receivedData(uint8_t* data, uint8_t bits, const char* message) {
   Serial.println("===");
+  Serial.print("bits="); Serial.println(bits);
+  if ((bits % 8) != 0) {
+    Serial.println("shitty long card, ignoring");
+    return;
+  }
   //Serial.print(message);
   //Serial.print(bits);
   //Serial.print("bits / ");
   //uint8_t bytes = (bits + 7) / 8;
+  uint8_t bytes = 4;
   //Serial.print("bytes = "); Serial.println(bytes);
 
-  String foundcard = readablerfid4((char*) data);
+  //=============
+  char rfidstring[30] = "";
+  //char * rfidstring = (char *) malloc(strlen(data)*2);
+  //char rfidstring[strlen((char*) data)*2];
+  char tempchar[2];
+  Serial.print("length="); Serial.println(bytes);
+  for (int i = 0; i < bytes; i++) {
+    //Serial.print(data[i] >> 4, 16);
+    //Serial.print(data[i] & 0xF, 16);
+    sprintf(tempchar, "%x%x", data[i] >> 4, data[i] & 0x0F);
+    strcat(rfidstring, tempchar);
+    Serial.print(i); Serial.print(":"); Serial.println(rfidstring);
+  }
+
+  Serial.print("strlen: "); Serial.println(strlen(rfidstring));
+  
+  for (int i = 0; i < strlen(rfidstring); i++) {
+    Serial.print(i); Serial.print(">");
+
+    Serial.print("-"); Serial.print(rfidstring[i]); Serial.print("-");
+
+    rfidstring[i] = toupper(rfidstring[i]);
+    Serial.print(i); Serial.println("<");
+  }
+
+  Serial.printf("A=%s\n", rfidstring);
+  String foundcard = rfidstring;
+  Serial.printf("B=%s\n", rfidstring);
+
+  delay(500);
+
+  //===============
+
+
+  //String foundcard = readablerfid4((char*) data);
   Serial.print("Card Detected: "); Serial.println(foundcard);
+
 
   syslog.logf(LOG_INFO, "Card-Detected: Card=%s", foundcard.c_str());
 
+  
   if (findUser(foundcard)) {
     Serial.print(foundcard); Serial.println(": Card found, unlocking door");
     unlockDoor(foundcard);
@@ -219,7 +270,7 @@ void receivedData(uint8_t* data, uint8_t bits, const char* message) {
     spiffslog(foundcard, String("Unknown card, locking door"));
   }
 
-  //delete(&foundcard);
+  //delete (*foundcard);
 }
 
 // Notifies when an invalid transmission is detected
