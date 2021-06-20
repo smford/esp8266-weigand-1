@@ -1,3 +1,11 @@
+void enableRelay() {
+  digitalWrite(RELAY, LOW);
+}
+
+void disableRelay() {
+  digitalWrite(RELAY, HIGH);
+}
+
 bool findUser(String foundrfid) {
   //Serial.print(foundrfid); Serial.print(": ");
   if (userlist.indexOf(foundrfid) >= 0) {
@@ -110,12 +118,14 @@ void spiffslog(String string1, String message) {
 
 void unlockDoor(String rfidcard) {
   syslog.logf(LOG_INFO, "Door:Open Card=%s", rfidcard.c_str());
-  // fire relay for X seconds
+  enableRelay();
+  delay(relaytime * 1000);
+  disableRelay();
 }
 
 void lockDoor(String rfidcard) {
   syslog.logf(LOG_INFO, "Door:Lock Card=%s", rfidcard.c_str());
-  // ensure that relay is NOT fired
+  disableRelay();
 }
 
 void printLogs() {

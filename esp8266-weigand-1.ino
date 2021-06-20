@@ -13,6 +13,7 @@
 // Ensure your board supports external Interruptions on these pins
 #define PIN_D0 D2
 #define PIN_D1 D1
+#define RELAY D6
 
 #define FIRMWARE_VERSION "v1"
 
@@ -24,6 +25,9 @@ const char* appname = "frontdoor";
 const char* ssid = "junk";
 const char* password = "junk";
 const int wifitimeout = 10;
+
+// how long to keep the relay open in seconds
+const int relaytime = 3;
 
 // A UDP instance to let us send and receive packets over UDP
 WiFiUDP udpClient;
@@ -81,17 +85,22 @@ Wiegand wiegand;
 void setup() {
   Serial.begin(115200);
 
-  delay(1000);
+  delay(3000);
+
+  Serial.println("Booting: ...");
 
   Serial.print("Firmware: "); Serial.println(FIRMWARE_VERSION);
 
-  Serial.println("Booting: ...");
+  Serial.println("Configuring Relay: ...");
+  pinMode(RELAY, OUTPUT);
+  Serial.println("Ensure Relay Disabled: ...");
+  disableRelay();
 
   // Connect to Wi-Fi
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
-  Serial.print("Connecting to wifi: ");
+  Serial.print("Connecting to Wifi: ");
   int wifiiteration = 0;
   bool wificonnected = false;
   while (WiFi.status() != WL_CONNECTED) {
